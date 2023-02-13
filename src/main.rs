@@ -1,4 +1,4 @@
-use win32process::ProcessSensor;
+use win32process::ProcessMonitor;
 
 impl Process {
     fn clean(&mut self) {
@@ -17,11 +17,16 @@ impl Process {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (tx, rx) = crossbeam_channel::bounded(10);
-    let sensor = ProcessSensor::new(tx);
 
-    for process in rx.recv() {
-        println!("{:#?}", process);
+    let mut sensor = ProcessMonitor::new(tx);
+    std::thread::spawn(move|| {
+        sensor.run();
+    });
+
+    loop {
+        if let Ok(process) = rx.try_recv() {
+            println!("{:#?}", process);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
-    Ok(())
-
 }

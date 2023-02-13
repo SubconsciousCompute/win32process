@@ -54,11 +54,11 @@ pub struct Process {
 }
 
 /// Process space sensor.
-pub struct ProcessSensor {
+pub struct ProcessMonitor {
     tx: crossbeam_channel::Sender<Process>,
 }
 
-impl ProcessSensor {
+impl ProcessMonitor {
     pub fn new(tx: Sender<Process>) -> Self {
         Self { tx }
     }
@@ -67,18 +67,19 @@ impl ProcessSensor {
         // Before using WMI, a connection must be created.
         let com_con = COMLibrary::new().unwrap();
         let wmi_con = WMIConnection::new(com_con).unwrap();
-
         let mut filters = HashMap::<String, FilterValue>::new();
-
         filters.insert("TargetInstance".to_owned(), FilterValue::is_a::<Process>()?);
-
-        for result in wmi_con
-            .filtered_notification::<NewProcessEvent>(&filters, Some(Duration::from_secs(1)))?
-        {
-            let process = result?.target_instance;
-            if let Err(e) =  self.tx.send(process) {
-                eprintln!("Error sending {e:?}");
+        tracing::info!("WMI connection created.");
+        loop {
+            for result in wmi_con
+                .filtered_notification::<NewProcessEvent>(&filters, Some(Duration::from_secs(1)))?
+            {
+                let process = result?.target_instance;
+                if let Err(e) = self.tx.send(process) {
+                    eprintln!("Error sending {e:?}");
+                }
             }
+            std::thread::sleep(std::time::Duration::from_millis(100));
         }
         Ok(())
     }
