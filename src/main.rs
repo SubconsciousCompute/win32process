@@ -52,6 +52,21 @@ struct Process {
     command_line: Option<String>, // Command line used to start a specific process, if applicable
 }
 
+impl Process {
+    fn clean(&mut self) {
+        if self.command_line.is_some() && self.executable_path.is_some() {
+            let mut len = 0;
+            if self.command_line.as_ref().unwrap().starts_with('"') {
+                len += 3;
+            }
+            self.command_line
+                .as_mut()
+                .unwrap()
+                .replace_range(0..(self.executable_path.as_ref().unwrap().len() + len), "");
+        }
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Before using WMI, a connection must be created.
     let com_con = COMLibrary::new()?;
@@ -65,7 +80,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         wmi_con.filtered_notification::<NewProcessEvent>(&filters, Some(Duration::from_secs(1)))?;
 
     for result in iterator {
-        let process = result?.target_instance;
+        let mut process = result?.target_instance;
+        process.clean();
         println!("{:#?}", process);
     } // Loop will end only on error
 
