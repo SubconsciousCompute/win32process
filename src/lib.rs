@@ -53,6 +53,21 @@ pub struct Process {
     pub command_line: Option<String>, // Command line used to start a specific process, if applicable
 }
 
+impl Process {
+    fn clean(&mut self) {
+        if self.command_line.is_some() && self.executable_path.is_some() {
+            let mut len = 0;
+            if self.command_line.as_ref().unwrap().starts_with('"') {
+                len += 3;
+            }
+            self.command_line
+                .as_mut()
+                .unwrap()
+                .replace_range(0..(self.executable_path.as_ref().unwrap().len() + len), "");
+        }
+    }
+}
+
 /// Process space sensor.
 pub struct ProcessMonitor {
     tx: crossbeam_channel::Sender<Process>,
