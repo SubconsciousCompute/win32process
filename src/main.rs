@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         if let Ok(process) = rx.try_recv() {
-            println!("{:#?}", process);
+            println!("{process:#?}");
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
