@@ -4,8 +4,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (tx, rx) = crossbeam_channel::bounded(10);
 
     let mut sensor = ProcessMonitor::new(tx);
-    std::thread::spawn(move|| {
-        sensor.run();
+    std::thread::spawn(move || {
+        sensor.run().expect("unable to run sensor");
     });
 
     loop {
