@@ -50,27 +50,24 @@ pub struct Process {
     /// Example: "C:\Windows\System\Explorer.Exe"
     pub executable_path: Option<String>,
     /// Command line used to start a specific process, if applicable.
-    pub command_line: Option<String>, // Command line used to start a specific process, if applicable
+    pub command_line: Option<String>,
 }
 
 impl Process {
+    // we remove the executable path from the `command_line` member
     fn clean(&mut self) {
-        if self.command_line.is_some() && self.executable_path.is_some() {
-            let mut len = 0;
-            if self.command_line.as_ref().unwrap().starts_with('"') {
-                len += 3;
-            }
-            self.command_line
-                .as_mut()
-                .unwrap()
-                .replace_range(0..(self.executable_path.as_ref().unwrap().len() + len), "");
+        if let (Some(cmd), Some(path)) = (&mut self.command_line, &self.executable_path) {
+            // we use 3 because sometimes the executable path is written as "some path",
+            // they actually include the semicolon
+            let len = if cmd.starts_with('"') { 3 } else { 0 };
+            cmd.replace_range(0..(path.len() + len), "");
         }
     }
 }
 
 /// Process space sensor.
 pub struct ProcessMonitor {
-    tx: crossbeam_channel::Sender<Process>,
+    tx: Sender<Process>,
 }
 
 impl ProcessMonitor {
@@ -89,13 +86,13 @@ impl ProcessMonitor {
             for result in wmi_con
                 .filtered_notification::<NewProcessEvent>(&filters, Some(Duration::from_secs(1)))?
             {
-                let process = result?.target_instance;
+                let mut process = result?.target_instance;
+                process.clean();
                 if let Err(e) = self.tx.send(process) {
                     eprintln!("Error sending {e:?}");
                 }
             }
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(100));
         }
-        Ok(())
     }
 }
